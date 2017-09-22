@@ -447,6 +447,19 @@ if (program.watch) {
 
   purge = function purge () {
     watchFiles.forEach(function (file) {
+      // This function gets called on every run. Since
+      // node.js's require is leaking module meta data on the parent.children
+      // (see [1]), we need to remove the new modules from the parent.children in
+      // order to allow the garbage collector to garbage collect the old
+      // test runs.
+      //
+      // [1]: https://github.com/nodejs/node/blob/master/lib/module.js#L58-L72
+      var module = require.cache[file];
+      var parent = module.parent;
+      if (parent && parent.children.indexOf(module) > -1) {
+        parent.children.splice(parent.children.indexOf(module), 1);
+      }
+
       delete require.cache[file];
     });
   };
